@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: hunt360-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: hunt360
+      MYSQL_USER: hunt360_user
+      MYSQL_PASSWORD: Hunt360Pass123!
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hunt360-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    command: npm run dev
+
+  adminer:
+    image: adminer
+    container_name: hunt360-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
+volumes:
+  db_data:
