@@ -1,18 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, Search, Briefcase, UserCircle, 
-  BarChart2, Users, FileText, Mail, Settings 
+  BarChart2, Users, FileText, Mail, Settings, LogOut 
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 
-// Mock Data for Charts
 const jobData = [
-  { name: 'Tech', value: 50, fill: '#8884d8' },
-  { name: 'Finance', value: 30, fill: '#ffc658' },
-  { name: 'Marketing', value: 20, fill: '#00C49F' },
-  { name: 'HR', value: 10, fill: '#FF8042' },
+  { name: 'Tech', value: 50 },
+  { name: 'Finance', value: 30 },
+  { name: 'Marketing', value: 20 },
+  { name: 'HR', value: 10 },
 ];
-
 const hrData = [
     { name: 'Hiring', value: 30 },
     { name: 'Not Hiring', value: 15 },
@@ -20,35 +19,65 @@ const hrData = [
 const COLORS = ['#8884d8', '#e5e7eb'];
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState({ username: 'Guest' });
+  const [initials, setInitials] = useState('G');
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        // Get initials (First 2 chars of username, uppercase)
+        if (parsed.username) {
+            setInitials(parsed.username.substring(0, 2).toUpperCase());
+        }
+    }
+  }, []);
+
+  const handleLogout = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/auth');
+  };
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r hidden md:block">
-        <div className="p-4 flex items-center gap-2 border-b">
-           <img src="/assets/logo.png" alt="Logo" className="h-8" />
-           <span className="font-bold text-lg">Hunt360</span>
+      <aside className="w-64 bg-white border-r hidden md:flex flex-col justify-between">
+        <div>
+            <div className="p-4 flex items-center gap-2 border-b h-16">
+                <img src="/assets/logo.png" alt="Logo" className="h-8" />
+                <span className="font-bold text-lg text-gray-800">Hunt360</span>
+            </div>
+            <nav className="p-4 space-y-1">
+                <SidebarItem icon={<LayoutDashboard size={20} />} text="Dashboard" active />
+                <SidebarItem icon={<Search size={20} />} text="Job Search" />
+                <SidebarItem icon={<Briefcase size={20} />} text="HR Hunt" />
+                <SidebarItem icon={<UserCircle size={20} />} text="Corporate Hunt" />
+                <SidebarItem icon={<BarChart2 size={20} />} text="Senior Management" />
+                <SidebarItem icon={<Users size={20} />} text="Campus" />
+            </nav>
         </div>
-        <nav className="p-4 space-y-1">
-            <SidebarItem icon={<LayoutDashboard size={20} />} text="Dashboard" active />
-            <SidebarItem icon={<Search size={20} />} text="Job Search" />
-            <SidebarItem icon={<Briefcase size={20} />} text="HR Hunt" />
-            <SidebarItem icon={<UserCircle size={20} />} text="Corporate Hunt" />
-            <SidebarItem icon={<BarChart2 size={20} />} text="Senior Management" />
-            <SidebarItem icon={<Users size={20} />} text="Campus" />
-            <SidebarItem icon={<FileText size={20} />} text="Resume Hunt" />
-            <SidebarItem icon={<Mail size={20} />} text="Email Service" />
-            <SidebarItem icon={<Settings size={20} />} text="Settings" />
-        </nav>
+        <div className="p-4">
+             <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 w-full rounded transition">
+                <LogOut size={20} />
+                <span className="font-medium text-sm">Logout</span>
+             </button>
+        </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 p-6 overflow-y-auto">
-        {/* Header */}
         <header className="flex justify-between items-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-800">Hunt360 Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Welcome, {user.username}</h1>
             <div className="flex items-center gap-4">
-                <input type="text" placeholder="Search..." className="border rounded-lg px-4 py-2" />
-                <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold">BD</div>
+                <input type="text" placeholder="Search..." className="border rounded-lg px-4 py-2 bg-white hidden sm:block" />
+                
+                {/* Dynamic Initials Circle */}
+                <div className="h-10 w-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-md cursor-pointer hover:bg-purple-700 transition" title={user.username}>
+                    {initials}
+                </div>
             </div>
         </header>
 
@@ -60,9 +89,8 @@ const Dashboard = () => {
             <StatCard icon={<Users />} title="Campus Users" value="200" />
         </div>
 
-        {/* Charts Row */}
+        {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Bar Chart */}
             <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border">
                 <h3 className="text-lg font-semibold mb-4">Job Search Analytics</h3>
                 <div className="h-64">
@@ -70,51 +98,26 @@ const Dashboard = () => {
                         <BarChart data={jobData}>
                             <XAxis dataKey="name" />
                             <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" />
+                            <Tooltip cursor={{fill: '#f3f4f6'}} />
+                            <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            {/* Recent Activity (Acting as right sidebar in content) */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                <div className="space-y-4">
-                    <ActivityItem title="Job Application" desc="Applied to Software Engineer" time="2 hrs ago" />
-                    <ActivityItem title="HR Profile" desc="New profile: Jessica Williams" time="4 hrs ago" />
-                    <ActivityItem title="Corporate Lead" desc="Added lead: Meta Inc." time="Yesterday" />
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                    <button className="w-full text-left p-3 rounded bg-purple-50 text-purple-700 font-medium hover:bg-purple-100 transition text-sm">
+                        + Post a New Job
+                    </button>
+                    <button className="w-full text-left p-3 rounded bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 transition text-sm">
+                        + Add HR Contact
+                    </button>
+                    <button className="w-full text-left p-3 rounded bg-green-50 text-green-700 font-medium hover:bg-green-100 transition text-sm">
+                        + Create Campaign
+                    </button>
                 </div>
-            </div>
-        </div>
-
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border lg:col-span-2 flex justify-between items-center">
-                 <div>
-                    <h3 className="text-lg font-semibold">HR Hunt Profiles</h3>
-                    <div className="h-48 w-48 mt-4">
-                        <ResponsiveContainer>
-                            <PieChart>
-                                <Pie data={hrData} dataKey="value" outerRadius={60} fill="#8884d8">
-                                    {hrData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                 </div>
-                 <div className="text-right">
-                    <span className="block text-sm text-purple-600 font-bold">Hiring Now (66%)</span>
-                    <span className="block text-sm text-gray-400">Not Hiring (34%)</span>
-                 </div>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h3 className="text-lg font-semibold mb-2">Quick Settings</h3>
-                <p className="text-gray-500 text-sm mb-4">Manage your Hunt360 settings</p>
-                <button className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700">Go to Settings</button>
             </div>
         </div>
       </main>
@@ -122,29 +125,20 @@ const Dashboard = () => {
   );
 };
 
-// Sub-components
 const SidebarItem = ({ icon, text, active }) => (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded cursor-pointer ${active ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 rounded cursor-pointer transition ${active ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
         {icon}
         <span className="font-medium text-sm">{text}</span>
     </div>
 );
 
 const StatCard = ({ icon, title, value }) => (
-    <div className="bg-white p-6 rounded-lg shadow-sm border flex items-center gap-4">
+    <div className="bg-white p-6 rounded-lg shadow-sm border flex items-center gap-4 hover:shadow-md transition">
         <div className="p-3 bg-purple-50 text-purple-600 rounded-full">{icon}</div>
         <div>
             <p className="text-gray-500 text-sm">{title}</p>
-            <h4 className="text-2xl font-bold">{value}</h4>
+            <h4 className="text-2xl font-bold text-gray-800">{value}</h4>
         </div>
-    </div>
-);
-
-const ActivityItem = ({ title, desc, time }) => (
-    <div className="border-l-2 border-purple-200 pl-4 py-1">
-        <h5 className="font-semibold text-sm">{title}</h5>
-        <p className="text-xs text-gray-500">{desc}</p>
-        <span className="text-[10px] text-gray-400">{time}</span>
     </div>
 );
 

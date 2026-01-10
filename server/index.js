@@ -11,9 +11,8 @@ app.use(cors());
 
 // In-memory store
 const users = []; 
-const otpStore = new Map(); // email -> { otp, expires, tempData }
+const otpStore = new Map(); 
 
-// Email Transporter Configuration
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -22,120 +21,89 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Helper: Generate OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// Helper: Send Email with Console Fallback
 const sendEmail = async (email, otp) => {
-    console.log(`[DEBUG] Generated OTP for ${email}: ${otp}`); // ALWAYS print to console for local testing
-    
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.warn("[WARN] Email credentials missing in .env. OTP not sent via email.");
-        return;
-    }
-
+    console.log(`[DEBUG] Generated OTP for ${email}: ${otp}`);
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
     try {
         await transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: email,
             subject: 'Hunt360 Verification Code',
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h2>Hunt360 Verification</h2>
-                    <p>Your One-Time Password (OTP) is:</p>
-                    <h1 style="color: #6D28D9; letter-spacing: 5px;">${otp}</h1>
-                    <p>This code expires in 5 minutes.</p>
-                </div>
-            `
+            html: `<h2>Your OTP is: <span style="color:purple">${otp}</span></h2>`
         });
-        console.log(`[SUCCESS] Email sent to ${email}`);
     } catch (error) {
-        console.error("[ERROR] Failed to send email:", error.message);
-        // We don't throw error here so the UI flow doesn't break, user can use console OTP
+        console.error("Email error:", error);
     }
 };
 
-// 1. Signup Step 1: Validate & Send OTP
+// Signup Init
 app.post('/api/auth/signup-init', async (req, res) => {
     const { username, email, password, captchaToken } = req.body;
+    
+    // Check if email OR username already exists
+    const existingUser = users.find(u => u.email === email || u.username === username);
+    if (existingUser) return res.status(400).json({ message: "Email or Username already taken" });
 
-    // Basic Validation
-    if (!username || !email || !password) {
-        return res.status(400).json({ message: "All fields are required" });
-    }
-
-    // Mock Captcha Check
-    if (!captchaToken) {
-        return res.status(400).json({ message: "Please complete the captcha" });
-    }
-
-    // Password Policy
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
-        return res.status(400).json({ 
-            message: "Password must be 8+ chars, with Uppercase, Lowercase, Number, and Special char." 
-        });
+        return res.status(400).json({ message: "Password too weak." });
     }
 
-    // Check if user exists
-    const existingUser = users.find(u => u.email === email);
-    if (existingUser) return res.status(400).json({ message: "Email already registered" });
-
     const otp = generateOTP();
-    
-    // Store temp data (including username) until OTP is verified
     otpStore.set(email, { 
         otp, 
         tempData: { username, email, password: await bcrypt.hash(password, 10) },
-        expires: Date.now() + 300000 // 5 mins
+        expires: Date.now() + 300000 
     });
 
     await sendEmail(email, otp);
-    res.json({ message: "OTP sent. Check your email or console." });
+    res.json({ message: "OTP sent" });
 });
 
-// 2. Signup Step 2: Verify OTP & Create Account
+// Signup Verify
 app.post('/api/auth/signup-verify', (req, res) => {
     const { email, otp } = req.body;
     const record = otpStore.get(email);
 
-    if (!record) return res.status(400).json({ message: "Session expired. Signup again." });
-    if (record.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
-    if (Date.now() > record.expires) return res.status(400).json({ message: "OTP Expired" });
+    if (!record || record.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
 
-    // Create User with Username
     const newUser = { 
         id: users.length + 1, 
         username: record.tempData.username,
         email: record.tempData.email, 
         password: record.tempData.password 
     };
-    
     users.push(newUser);
     otpStore.delete(email);
 
-    const token = jwt.sign({ email, username: newUser.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ email, username: newUser.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { email, username: newUser.username } });
 });
 
-// 3. Login Step 1: Check Creds & Send MFA
+// LOGIN (Modified for Username OR Email)
 app.post('/api/auth/login', async (req, res) => {
-    const { email, password } = req.body;
-    const user = users.find(u => u.email === email);
+    const { identifier, password } = req.body; // 'identifier' can be email or username
+
+    // Find user by Email OR Username
+    const user = users.find(u => u.email === identifier || u.username === identifier);
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
-        return res.status(400).json({ message: "Invalid email or password" });
+        return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Generate MFA OTP
+    // Always use the user's email for OTP, even if they logged in with username
     const otp = generateOTP();
-    otpStore.set(email, { otp, expires: Date.now() + 300000 });
+    otpStore.set(user.email, { otp, expires: Date.now() + 300000 });
     
-    await sendEmail(email, otp);
-    res.json({ message: "MFA OTP sent", mfaRequired: true });
+    await sendEmail(user.email, otp);
+    
+    // Return the email so the frontend knows where to verify the OTP
+    res.json({ message: "MFA OTP sent", email: user.email });
 });
 
-// 4. Login Step 2: Verify MFA
+// Login Verify
 app.post('/api/auth/login-verify', (req, res) => {
     const { email, otp } = req.body;
     const record = otpStore.get(email);
@@ -144,15 +112,14 @@ app.post('/api/auth/login-verify', (req, res) => {
     if (!record || record.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
 
     otpStore.delete(email);
-    const token = jwt.sign({ email, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token, user: { email, username: user.username } });
+    
+    // Set token to expire in 7 days for "Remember Me" effect
+    const token = jwt.sign({ email, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { email: user.email, username: user.username } });
 });
 
 const PORT = process.env.PORT || 5000;
-
-// Only listen if not running on Vercel (allows local dev to still work)
 if (require.main === module) {
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
-
 module.exports = app;
