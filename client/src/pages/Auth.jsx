@@ -4,29 +4,25 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 
 const Auth = () => {
-  // Views: 'login' | 'signup' | 'forgot'
-  const [view, setView] = useState('login'); 
-  const [step, setStep] = useState(1); // 1: Init, 2: OTP/Verify
-  
+  const [view, setView] = useState('login'); // 'login' | 'signup' | 'forgot'
+  const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Form State
   const [formData, setFormData] = useState({ 
     username: '', 
     email: '', 
     identifier: '', 
     password: '', 
     otp: '',
-    newPassword: '' // For reset flow
+    newPassword: ''
   });
   
   const [rememberMe, setRememberMe] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState(''); 
   const navigate = useNavigate();
 
-  // Load Remembered User
   useEffect(() => {
     const savedId = localStorage.getItem('hunt360_identifier');
     if (savedId) {
@@ -44,7 +40,12 @@ const Auth = () => {
       setView(newView);
       setStep(1);
       setError('');
-      setFormData(prev => ({ ...prev, password: '', otp: '', newPassword: '' }));
+      // UX: If coming from Forgot Password, auto-fill login identifier with the email used
+      if (newView === 'login' && view === 'forgot' && formData.email) {
+          setFormData(prev => ({ ...prev, identifier: prev.email, password: '', otp: '', newPassword: '' }));
+      } else {
+          setFormData(prev => ({ ...prev, password: '', otp: '', newPassword: '' }));
+      }
   };
 
   const handleSubmit = async (e) => {
@@ -79,7 +80,8 @@ const Auth = () => {
             await axios.post('/api/auth/signup-init', { 
                 username: formData.username,
                 email: formData.email,
-                password: formData.password
+                password: formData.password,
+                captchaToken: "valid_token" 
             });
             setVerificationEmail(formData.email);
             setStep(2);
@@ -94,12 +96,10 @@ const Auth = () => {
       // --- FORGOT PASSWORD FLOW ---
       else if (view === 'forgot') {
           if (step === 1) {
-              // Send Reset OTP
               await axios.post('/api/auth/forgot-password', { email: formData.email });
               setVerificationEmail(formData.email);
               setStep(2);
           } else {
-              // Reset Password
               if (!validatePassword(formData.newPassword)) {
                   throw new Error("New password is too weak.");
               }
@@ -108,8 +108,8 @@ const Auth = () => {
                   otp: formData.otp,
                   newPassword: formData.newPassword
               });
-              alert("Password reset successfully! Please login.");
-              resetState('login');
+              alert("Password reset successfully! Please login with your new password.");
+              resetState('login'); // Switch back to login view
           }
       }
     } catch (err) {
@@ -151,23 +151,18 @@ const Auth = () => {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             
-            {/* --- STEP 1: INITIAL DATA --- */}
             {step === 1 && (
                 <>
-                    {/* SIGNUP FIELDS */}
                     {view === 'signup' && (
-                        <>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 mb-1">USERNAME</label>
-                                <input type="text" placeholder="johndoe" 
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none"
-                                    value={formData.username}
-                                    onChange={e => setFormData({...formData, username: e.target.value})} required />
-                            </div>
-                        </>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">USERNAME</label>
+                            <input type="text" placeholder="johndoe" 
+                                className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none"
+                                value={formData.username}
+                                onChange={e => setFormData({...formData, username: e.target.value})} required />
+                        </div>
                     )}
 
-                    {/* EMAIL FIELD (Shared by Signup & Forgot) */}
                     {(view === 'signup' || view === 'forgot') && (
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">EMAIL ADDRESS</label>
@@ -178,7 +173,6 @@ const Auth = () => {
                         </div>
                     )}
 
-                    {/* LOGIN IDENTIFIER */}
                     {view === 'login' && (
                          <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">EMAIL OR USERNAME</label>
@@ -189,7 +183,6 @@ const Auth = () => {
                         </div>
                     )}
 
-                    {/* PASSWORD FIELD (Login & Signup only) */}
                     {(view === 'login' || view === 'signup') && (
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">PASSWORD</label>
@@ -206,7 +199,6 @@ const Auth = () => {
                         </div>
                     )}
 
-                    {/* OPTIONS & LINKS */}
                     {view === 'login' && (
                         <div className="flex items-center justify-between mt-1">
                              <label className="flex items-center gap-2 cursor-pointer">
@@ -223,7 +215,6 @@ const Auth = () => {
                 </>
             )}
 
-            {/* --- STEP 2: OTP & VERIFICATION --- */}
             {step === 2 && (
                 <div className="flex flex-col gap-4">
                     <p className="text-center text-sm text-gray-600">
@@ -237,20 +228,24 @@ const Auth = () => {
                             onChange={e => setFormData({...formData, otp: e.target.value})} required />
                     </div>
 
-                    {/* NEW PASSWORD FIELD (Only for Forgot Password Flow) */}
                     {view === 'forgot' && (
                          <div>
                             <label className="block text-xs font-semibold text-gray-500 mb-1">NEW PASSWORD</label>
-                            <input type="password" placeholder="New strong password" 
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none"
-                                value={formData.newPassword}
-                                onChange={e => setFormData({...formData, newPassword: e.target.value})} required />
+                            <div className="relative">
+                                <input type={showPassword ? "text" : "password"} placeholder="New strong password" 
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-purple-500 outline-none pr-10"
+                                    value={formData.newPassword}
+                                    onChange={e => setFormData({...formData, newPassword: e.target.value})} required />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* SUBMIT BUTTON */}
             <button type="submit" disabled={loading}
                 className="bg-purple-600 text-white py-2.5 rounded font-medium hover:bg-purple-700 transition disabled:bg-purple-300 mt-2">
                 {loading ? 'Processing...' : (
@@ -259,7 +254,6 @@ const Auth = () => {
                 )}
             </button>
             
-            {/* BACK BUTTON (For Forgot Flow) */}
             {view === 'forgot' && step === 1 && (
                 <button type="button" onClick={() => resetState('login')} 
                     className="flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700 mt-2">
@@ -268,7 +262,6 @@ const Auth = () => {
             )}
         </form>
 
-        {/* FOOTER SWITCHES */}
         {view !== 'forgot' && (
             <p className="mt-6 text-center text-sm text-gray-600">
                 {view === 'login' ? "New to Hunt360?" : "Already have an account?"}{" "}
