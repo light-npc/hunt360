@@ -24,7 +24,7 @@ const LandingPage = () => {
       <div 
         className="flex-1 flex flex-col items-center justify-center text-center relative"
         style={{
-            backgroundImage: 'url("/assets/world-map.png")',
+            backgroundImage: 'url("/assets/worldmap.jpg")',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
