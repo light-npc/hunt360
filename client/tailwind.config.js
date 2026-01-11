@@ -13,7 +13,23 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+      },
+      // --- ADD THIS SECTION ---
+      keyframes: {
+        slowZoom: {
+          '0%': { transform: 'scale(1)' },
+          '100%': { transform: 'scale(1.1)' },
+        },
+        scanline: {
+          '0%': { transform: 'translateY(-100%)' },
+          '100%': { transform: 'translateY(100%)' }
+        }
+      },
+      animation: {
+        slowZoom: 'slowZoom 20s ease-in-out infinite alternate',
+        scanline: 'scanline 8s linear infinite',
       }
+      // ------------------------
     },
   },
   plugins: [],

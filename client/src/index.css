@@ -7,3 +7,22 @@ body {
   font-family: 'Inter', sans-serif;
   background-color: #f8fafc;
 }
+
+/* ... existing tailwind imports ... */
+
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.1) translate(-2%, -1%);
+  }
+  100% {
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+.animate-bg-motion {
+  animation: ken-burns 25s ease-in-out infinite alternate;
+  will-change: transform;
+}
