@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Auth from './pages/Auth';
+import AboutUs from './pages/AboutUs';
 
 // New Component: Checks token every time a route is accessed
 const ProtectedRoute = ({ children }) => {
@@ -19,6 +20,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<Auth />} />
+        {/* --- ADD THIS NEW ROUTE --- */}
+        <Route path="/about" element={<AboutUs />} />
         
         {/* Wrap Dashboard in the ProtectedRoute logic */}
         <Route 

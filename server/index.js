@@ -19,7 +19,7 @@ const users = [
         id: 1,
         fullName: "Hunt360 Admin",
         username: "admin", // Added username for fallback
-        email: "jitumahataray@gmail.com",
+        email: "admin@hunt360.com",
         // The password is: Password@123
         // We use hashSync here to generate the hash immediately on server start
         password: bcrypt.hashSync("Password@123", 10), 

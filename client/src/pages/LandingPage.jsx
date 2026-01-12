@@ -33,11 +33,14 @@ const LandingPage = () => {
                <span className="text-2xl font-bold text-white tracking-wide">Hunt360</span>
             </div>
             
-            {/* Navbar Links - Only ABOUT is kept */}
+            {/* UPDATED: Link to the About Us Page */}
             <div className="flex items-center">
-              <a href="#" className="bg-blue-600/20 border border-blue-500 text-blue-400 px-6 py-2 rounded-full font-bold hover:bg-blue-600 hover:text-white transition uppercase tracking-wider text-sm">
+              <Link 
+                to="/about" 
+                className="bg-blue-600/20 border border-blue-500 text-blue-400 px-6 py-2 rounded-full font-bold hover:bg-blue-600 hover:text-white transition uppercase tracking-wider text-sm"
+              >
                 About
-              </a>
+              </Link>
             </div>
         </nav>
 
