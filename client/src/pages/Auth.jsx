@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft, Check, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
+import { Eye, EyeOff, AlertCircle, ArrowLeft, Check } from 'lucide-react';
 
 const Auth = () => {
-  const [view, setView] = useState('login'); // 'login' | 'signup' | 'forgot'
+  const [view, setView] = useState('login'); // Default is login
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,7 +34,9 @@ const Auth = () => {
   
   const [rememberMe, setRememberMe] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState(''); 
+  
   const navigate = useNavigate();
+  const location = useLocation(); // Hook to access navigation state
 
   // Country Codes List
   const countryCodes = [
@@ -46,6 +48,17 @@ const Auth = () => {
       { code: '+61', flag: '🇦🇺' },
   ];
 
+  // --- NEW LOGIC: Handle Direct Signup Redirect ---
+  useEffect(() => {
+    // If the previous page sent { view: 'signup' }, switch to signup immediately
+    if (location.state?.view) {
+        setView(location.state.view);
+        // Clear history state so browser refresh doesn't get stuck
+        window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  // Load Saved User ID
   useEffect(() => {
     const savedId = localStorage.getItem('hunt360_identifier');
     if (savedId) {
@@ -280,7 +293,6 @@ const Auth = () => {
                                 <div>
                                     <label className="block text-xs font-bold text-blue-300 mb-2 tracking-wider">PHONE NUMBER *</label>
                                     <div className="flex gap-2">
-                                        {/* Country Code Selector with Flag */}
                                         <div className="relative w-28">
                                             <select 
                                                 className="w-full p-3 bg-gray-900/50 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
@@ -293,9 +305,6 @@ const Auth = () => {
                                                     </option>
                                                 ))}
                                             </select>
-                                            <div className="absolute top-0 bottom-0 left-2 flex items-center pointer-events-none">
-                                               {/* Visual Fix to show flag on closed select */}
-                                            </div>
                                         </div>
                                         
                                         <input type="tel" placeholder="Mobile Number" 
