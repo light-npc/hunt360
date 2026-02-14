@@ -1,0 +1,25 @@
+# --- IGNORE IN ALL FOLDERS (Recursive) ---
+
+# Dependencies (Crucial: prevents thousands of files)
+**/node_modules
+
+# Environment Variables (Crucial: prevents hacking)
+.env
+**/.env
+.env.local
+**/.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+**/*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Build Outputs (No need to track compiled code)
+**/dist
+**/build
+**/coverage
